@@ -137,48 +137,46 @@ export const Logo = () => (
   </div>
 );
 
-// Countdown Timer — evergreen version starting at 04:36:27
+// Countdown Timer — evergreen version starting at 07:37:40 (synced with landing page & checkout)
 export const CountdownTimer = () => {
-  const INITIAL_SECONDS = (4 * 3600) + (36 * 60) + 27;
+  const DURATION_SECONDS = (7 * 3600) + (37 * 60) + 40;
+  const STORAGE_KEY = 'arch_evergreen_deadline_v1';
 
   const getTargetTime = () => {
-    const stored = localStorage.getItem('timer_target');
+    const stored = localStorage.getItem(STORAGE_KEY);
     const now = Date.now();
 
     if (stored) {
       const target = parseInt(stored, 10);
-      if (target > now) return target;
+      if (!isNaN(target) && target > now) return target;
     }
 
-    const newTarget = now + (INITIAL_SECONDS * 1000);
-    localStorage.setItem('timer_target', newTarget.toString());
+    const newTarget = now + (DURATION_SECONDS * 1000);
+    localStorage.setItem(STORAGE_KEY, newTarget.toString());
     return newTarget;
   };
 
   const getTimeLeft = (target: number) => {
-    const diff = Math.max(0, target - Date.now());
-    const h = Math.floor(diff / (1000 * 60 * 60));
-    const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const s = Math.floor((diff % (1000 * 60)) / 1000);
-    return { h, m, s };
+    const diff = Math.max(0, Math.floor((target - Date.now()) / 1000));
+    const h = Math.floor(diff / 3600);
+    const m = Math.floor((diff % 3600) / 60);
+    const s = diff % 60;
+    return { h, m, s, diff };
   };
 
-  const [target] = useState(getTargetTime);
+  const [target, setTarget] = useState(getTargetTime);
   const [time, setTime] = useState(() => getTimeLeft(target));
 
   useEffect(() => {
     const id = setInterval(() => {
       const remaining = getTimeLeft(target);
-      setTime(remaining);
-
-      // Reset if it hits zero to keep it evergreen
-      if (remaining.h === 0 && remaining.m === 0 && remaining.s === 0) {
-        const newTarget = Date.now() + (INITIAL_SECONDS * 1000);
-        localStorage.setItem('timer_target', newTarget.toString());
-        // We'd need to update the target state too for it to tick again immediately
-        // but typically just letting it stay at 0 until refresh is fine, 
-        // or we can reload location or just update target.
-        // For "evergreen" simplicity, we'll just let it tick.
+      if (remaining.diff <= 0) {
+        const newTarget = Date.now() + (DURATION_SECONDS * 1000);
+        localStorage.setItem(STORAGE_KEY, newTarget.toString());
+        setTarget(newTarget);
+        setTime(getTimeLeft(newTarget));
+      } else {
+        setTime(remaining);
       }
     }, 1000);
     return () => clearInterval(id);

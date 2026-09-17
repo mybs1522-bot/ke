@@ -105,24 +105,40 @@ export const CheckoutPage: React.FC = () => {
 
     // --- TIMER (synced with landing page via shared localStorage key) ---
     useEffect(() => {
-        const INITIAL_SECONDS = (4 * 3600) + (36 * 60) + 27;
-        const getTarget = () => {
-            const stored = localStorage.getItem('timer_target');
+        const DURATION_SECONDS = (7 * 3600) + (37 * 60) + 40;
+        const STORAGE_KEY = 'arch_evergreen_deadline_v1';
+
+        const getDeadline = () => {
+            const stored = localStorage.getItem(STORAGE_KEY);
             const now = Date.now();
             if (stored) {
                 const target = parseInt(stored, 10);
-                if (target > now) return target;
+                if (!isNaN(target) && target > now) return target;
             }
-            const newTarget = now + (INITIAL_SECONDS * 1000);
-            localStorage.setItem('timer_target', newTarget.toString());
-            return newTarget;
+            const newDeadline = now + (DURATION_SECONDS * 1000);
+            localStorage.setItem(STORAGE_KEY, newDeadline.toString());
+            return newDeadline;
         };
-        const target = getTarget();
+
+        let deadline = getDeadline();
+
         const calc = () => {
-            const diff = Math.max(0, target - Date.now());
-            setTimeLeft({ h: Math.floor(diff / (1000 * 60 * 60)), m: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)), s: Math.floor((diff % (1000 * 60)) / 1000) });
+            const now = Date.now();
+            let diff = Math.max(0, Math.floor((deadline - now) / 1000));
+            if (diff <= 0) {
+                deadline = now + (DURATION_SECONDS * 1000);
+                localStorage.setItem(STORAGE_KEY, deadline.toString());
+                diff = DURATION_SECONDS;
+            }
+            setTimeLeft({
+                h: Math.floor(diff / 3600),
+                m: Math.floor((diff % 3600) / 60),
+                s: diff % 60
+            });
         };
-        const t = setInterval(calc, 1000); calc();
+
+        calc();
+        const t = setInterval(calc, 1000);
         return () => clearInterval(t);
     }, []);
 
