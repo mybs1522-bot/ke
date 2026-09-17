@@ -453,3 +453,25 @@ if (document.readyState === 'loading') {
 // Repeat after 500ms and 1500ms to catch any lazy-rendered elements
 setTimeout(detectAndApplyGeoCurrency, 300);
 setTimeout(detectAndApplyGeoCurrency, 1000);
+
+// Always override executeStickyBuyNow and executeDirectBuyNow globally
+window.executeStickyBuyNow = function(btn) {
+  console.log('[Sticky Buy Now] Clicked - routing to Selar direct checkout');
+  handleCheckout({ productTitle: '6 Books For Interior & Exterior Design', variantTitle: 'E-Book Edition' });
+};
+
+window.executeDirectBuyNow = function(e, btn) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  console.log('[Direct Buy Now] Clicked - routing to Selar direct checkout');
+  handleCheckout({ productTitle: '6 Books For Interior & Exterior Design', variantTitle: 'E-Book Edition' });
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  const stickyBtn = document.getElementById('archStickyBuyBtn');
+  if (stickyBtn) {
+    stickyBtn.onclick = function(e) {
+      if (e) e.preventDefault();
+      window.executeStickyBuyNow(this);
+    };
+  }
+});

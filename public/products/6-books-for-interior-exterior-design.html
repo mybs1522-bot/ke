@@ -5560,11 +5560,29 @@ window.executeDirectBuyNow = function(e, btn) {
     body: JSON.stringify({ id: variantId, quantity: qty })
   })
   .then(function() {
-    window.location.href = '/checkout';
+    if (typeof handleCheckout === 'function') {
+      handleCheckout({ productTitle: '6 Books For Interior & Exterior Design', variantTitle: 'E-Book Edition' });
+    } else {
+      let currency = 'NGN';
+      try {
+        const cached = localStorage.getItem('visitor_geo_currency');
+        if (cached) currency = JSON.parse(cached).currency || 'NGN';
+      } catch(e) {}
+      window.location.href = 'https://sketchup.selar.com/581484b788?add_to_cart=1&currency=' + encodeURIComponent(currency);
+    }
   })
   .catch(function(err) {
     console.error('Checkout redirect fallback:', err);
-    window.location.href = '/checkout';
+    if (typeof handleCheckout === 'function') {
+      handleCheckout({ productTitle: '6 Books For Interior & Exterior Design', variantTitle: 'E-Book Edition' });
+    } else {
+      let currency = 'NGN';
+      try {
+        const cached = localStorage.getItem('visitor_geo_currency');
+        if (cached) currency = JSON.parse(cached).currency || 'NGN';
+      } catch(e) {}
+      window.location.href = 'https://sketchup.selar.com/581484b788?add_to_cart=1&currency=' + encodeURIComponent(currency);
+    }
   });
 };
 
@@ -8586,7 +8604,16 @@ details[open] .lp6-faq-chevron {
       body: JSON.stringify({ id: variantId, quantity: 1 })
     })
     .then(function() {
-      window.location.href = '/checkout';
+      if (typeof handleCheckout === 'function') {
+      handleCheckout({ productTitle: '6 Books For Interior & Exterior Design', variantTitle: 'E-Book Edition' });
+    } else {
+      let currency = 'NGN';
+      try {
+        const cached = localStorage.getItem('visitor_geo_currency');
+        if (cached) currency = JSON.parse(cached).currency || 'NGN';
+      } catch(e) {}
+      window.location.href = 'https://sketchup.selar.com/581484b788?add_to_cart=1&currency=' + encodeURIComponent(currency);
+    }
     })
     .catch(function() {
       // Fallback

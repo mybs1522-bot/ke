@@ -5796,7 +5796,16 @@ window.executeDirectBuyNow = function(e, btn) {
     const textSpan = btn.querySelector('[data-button-text]');
     if (textSpan) textSpan.textContent = 'Redirecting to Checkout...';
   }
-  window.location.href = '/checkout';
+  if (typeof handleCheckout === 'function') {
+      handleCheckout({ productTitle: '6 Books For Interior & Exterior Design', variantTitle: 'E-Book Edition' });
+    } else {
+      let currency = 'NGN';
+      try {
+        const cached = localStorage.getItem('visitor_geo_currency');
+        if (cached) currency = JSON.parse(cached).currency || 'NGN';
+      } catch(e) {}
+      window.location.href = 'https://sketchup.selar.com/581484b788?add_to_cart=1&currency=' + encodeURIComponent(currency);
+    }
 };
 
 /* Instant init for ATC Transparent Pill Urgency Timer */
@@ -8873,7 +8882,16 @@ details[open] .lp6-faq-chevron {
       const textSpan = btn.querySelector('.arch-sticky-btn__text');
       if (textSpan) textSpan.textContent = 'Redirecting to Checkout...';
     }
-    window.location.href = '/checkout';
+    if (typeof handleCheckout === 'function') {
+      handleCheckout({ productTitle: '6 Books For Interior & Exterior Design', variantTitle: 'E-Book Edition' });
+    } else {
+      let currency = 'NGN';
+      try {
+        const cached = localStorage.getItem('visitor_geo_currency');
+        if (cached) currency = JSON.parse(cached).currency || 'NGN';
+      } catch(e) {}
+      window.location.href = 'https://sketchup.selar.com/581484b788?add_to_cart=1&currency=' + encodeURIComponent(currency);
+    }
   };
 
 })();
