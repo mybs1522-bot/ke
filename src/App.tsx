@@ -10,6 +10,7 @@ import { HeroSlider } from './components/HeroSlider';
 import { ChevronDown, ArrowRight, Star, BookOpen, Sparkles, CheckCircle2, ShieldCheck, Target, TrendingUp, Zap, Users, X, Home, Sofa, ChefHat, Bed, Bath, Map, GraduationCap, Building, Wrench, Hammer, Palette, Download, Infinity, Award, Eye, Heart, Clock, Layers, LifeBuoy, Briefcase, AlertCircle, Package, Truck } from 'lucide-react';
 import { Course } from './types';
 import { trackMetaEvent } from './utils/meta-tracking';
+import { detectVisitorCurrency, buildCurrencyInfo, CurrencyInfo } from './utils/currency-geo';
 import {
   Counter, Logo,
   APP_STYLES, PORTRAIT_IMAGES, BOOK_THUMBNAILS, BOOK_IMAGES,
@@ -19,6 +20,7 @@ import {
 const ICON_MAP: Record<string, any> = { Home, BookOpen, Palette, Building, Hammer, Wrench, Download, Infinity, LifeBuoy, Users, Briefcase, GraduationCap, TrendingUp };
 
 const App: React.FC = () => {
+  const [geoInfo, setGeoInfo] = useState<CurrencyInfo>(() => buildCurrencyInfo('NG'));
   const [currentPath, setCurrentPath] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const redirect = params.get('redirect');
@@ -67,19 +69,27 @@ const App: React.FC = () => {
     return () => window.removeEventListener('scroll', h);
   }, []);
 
+  // Detect visitor location and currency automatically
+  useEffect(() => {
+    detectVisitorCurrency().then(info => {
+      setGeoInfo(info);
+    });
+  }, []);
+
   // Meta ViewContent for Landing Page
   useEffect(() => {
     if (currentPath === '/') {
+      const numericVal = typeof geoInfo.price === 'string' ? parseFloat(geoInfo.price.replace(/,/g, '')) : geoInfo.price;
       trackMetaEvent({
         eventName: 'ViewContent',
         content_name: 'Interior Design System - 6 Book Collection',
         content_ids: ['interior-design-system-6-books'],
         content_type: 'product',
-        value: 49.00,
-        currency: 'USD'
+        value: numericVal || 49.00,
+        currency: geoInfo.currency || 'USD'
       });
     }
-  }, [currentPath]);
+  }, [currentPath, geoInfo]);
 
   // Routing
   if (currentPath === '/checkout-hardcopy' || currentPath.startsWith('/checkout-hardcopy')) return <HardcopyCheckoutPage />;
@@ -87,18 +97,19 @@ const App: React.FC = () => {
   if (currentPath.startsWith('/success')) return <SuccessPage />;
 
   const navigateToCheckout = () => {
-    // Meta AddToCart
+    const numericVal = typeof geoInfo.price === 'string' ? parseFloat(geoInfo.price.replace(/,/g, '')) : geoInfo.price;
+    // Meta AddToCart / InitiateCheckout
     trackMetaEvent({
       eventName: 'AddToCart',
       content_name: 'Interior Design System - 6 Book Collection',
       content_ids: ['interior-design-system-6-books'],
       content_type: 'product',
-      value: 49.00,
-      currency: 'USD'
+      value: numericVal || 49.00,
+      currency: geoInfo.currency || 'USD'
     });
-    window.scrollTo(0, 0);
-    window.history.pushState({}, '', '/checkout');
-    setCurrentPath('/checkout');
+
+    // Direct checkout on Selar with the customer's detected currency
+    window.location.href = geoInfo.selarUrl;
   };
 
   const navigateToHardcopy = () => {
@@ -179,7 +190,7 @@ const App: React.FC = () => {
               </h1>
 
               {/* Trust badge pill */}
-              <div className="hero-fade-4 mb-6 inline-flex items-center gap-1.5 md:gap-2.5 px-3 md:px-5 py-2 md:py-2.5 bg-white/70 backdrop-blur-md border border-orange-100/80 rounded-full shadow-sm shadow-orange-500/5 whitespace-nowrap">
+              <div className="hero-fade-4 mb-3 inline-flex items-center gap-1.5 md:gap-2.5 px-3 md:px-5 py-2 md:py-2.5 bg-white/70 backdrop-blur-md border border-orange-100/80 rounded-full shadow-sm shadow-orange-500/5 whitespace-nowrap">
                 <div className="hidden md:flex -space-x-2">
                   {PORTRAIT_IMAGES.slice(0, 4).map((img, i) => (
                     <img key={i} src={img} alt="" className="w-7 h-7 rounded-full border-2 border-white object-cover" />
@@ -190,6 +201,17 @@ const App: React.FC = () => {
                 </div>
                 <span className="text-[10px] md:text-xs font-bold text-gray-700">Trusted by designers in 21+ countries</span>
               </div>
+
+              {/* Dynamic Localized African / Country Pricing Banner */}
+              {geoInfo.countryName && (
+                <div className="hero-fade-4 mb-6 inline-flex items-center gap-2 px-4 py-1.5 bg-orange-50/90 border border-orange-200/80 rounded-full text-xs font-semibold text-orange-950 shadow-sm">
+                  <span>📍 Special price for <strong className="font-bold text-orange-600">{geoInfo.countryName}</strong>:</span>
+                  <span className="font-black text-orange-700">{geoInfo.priceFormatted}</span>
+                  {geoInfo.originalPriceFormatted && (
+                    <span className="line-through text-gray-400 text-[11px]">{geoInfo.originalPriceFormatted}</span>
+                  )}
+                </div>
+              )}
 
               {/* Hero Book Cover Gallery Slider */}
               <HeroSlider />
@@ -317,15 +339,15 @@ const App: React.FC = () => {
             </div>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6">
               <div className="text-center">
-                <button onClick={navigateToCheckout} className="cta-primary px-8 py-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-orange-500/25 hover:shadow-orange-500/40 hover:scale-[1.03] active:scale-[0.98] transition-all inline-flex items-center gap-3 group whitespace-nowrap">
-                  E-Books Download — $49 <ArrowRight className="group-hover:translate-x-1 transition-transform" size={18} />
+                <button onClick={navigateToCheckout} className="cta-primary px-8 py-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-orange-500/25 hover:shadow-orange-500/40 hover:scale-[1.03] active:scale-[0.98] transition-all inline-flex items-center gap-3 group whitespace-nowrap cursor-pointer">
+                  E-Books Download — {geoInfo.priceFormatted} <ArrowRight className="group-hover:translate-x-1 transition-transform" size={18} />
                 </button>
                 <p className="text-xs text-gray-500 mt-2 flex items-center justify-center gap-1 font-medium"><Download size={12} className="text-orange-400" /> Download Instantly</p>
               </div>
               <span className="text-xs font-bold text-gray-400 uppercase">or</span>
               <div className="text-center">
                 <button onClick={navigateToHardcopy} className="px-8 py-4 bg-gray-900 text-white rounded-2xl font-bold text-lg shadow-xl shadow-gray-900/15 hover:bg-gray-800 hover:scale-[1.03] active:scale-[0.98] transition-all inline-flex items-center gap-3 group whitespace-nowrap">
-                  Get Hardcopies — $199 <Package size={18} />
+                  Get Hardcopies — {geoInfo.hardcopyPriceFormatted} <Package size={18} />
                 </button>
                 <p className="text-xs text-gray-500 mt-2 flex items-center justify-center gap-1 font-medium"><Truck size={12} className="text-gray-400" /> 10-Day Delivery Globally</p>
               </div>
@@ -519,7 +541,7 @@ const App: React.FC = () => {
         <section className="py-10 md:py-20">
           <div className="max-w-5xl mx-auto px-5">
             <div className="reveal text-center mb-7 md:mb-10">
-              <h2 className="text-3xl md:text-4xl font-display font-bold text-gray-900 tracking-tight">Everything you get <span className="text-orange-500">for $49</span></h2>
+              <h2 className="text-3xl md:text-4xl font-display font-bold text-gray-900 tracking-tight">Everything you get <span className="text-orange-500">for {geoInfo.priceFormatted}</span></h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
               {FEATURES.map((feat, i) => {
@@ -637,10 +659,26 @@ const App: React.FC = () => {
             <div className="reveal bg-white rounded-3xl p-6 md:p-10 shadow-2xl shadow-gray-900/10 border border-gray-100 text-center relative overflow-hidden">
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-400 via-amber-400 to-orange-500" />
 
-              <p className="text-gray-400 text-xs font-mono uppercase tracking-widest mb-4">The Complete Collection</p>
-              <div className="flex items-center justify-center gap-4 mb-2">
-                <span className="text-6xl md:text-7xl font-display font-black text-gray-900 tracking-tighter">$49</span>
+              <p className="text-gray-400 text-xs font-mono uppercase tracking-widest mb-3">The Complete Collection</p>
+              
+              <div className="flex flex-col items-center justify-center gap-1 mb-2">
+                <div className="flex items-center justify-center gap-3">
+                  <span className="text-4xl md:text-6xl font-display font-black text-gray-900 tracking-tighter">
+                    {geoInfo.priceFormatted}
+                  </span>
+                  {geoInfo.originalPriceFormatted && (
+                    <span className="text-2xl md:text-3xl line-through text-gray-400 font-bold">
+                      {geoInfo.originalPriceFormatted}
+                    </span>
+                  )}
+                </div>
+                {geoInfo.countryName && (
+                  <span className="text-xs font-bold text-orange-700 bg-orange-50 border border-orange-200/80 px-3 py-1 rounded-full mt-1">
+                    ⚡ {geoInfo.isAfrican ? 'African Local Price' : 'Special Offer'} for {geoInfo.countryName} ({geoInfo.currency})
+                  </span>
+                )}
               </div>
+
               <p className="text-orange-500 font-semibold text-sm mb-6 md:mb-8">One-time payment · Yours forever · Free updates for life</p>
 
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6 md:mb-8 text-left">
@@ -660,10 +698,10 @@ const App: React.FC = () => {
 
               <div className="space-y-3">
                 <div>
-                  <button onClick={navigateToCheckout} className="cta-primary w-full py-5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-[1.03] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group whitespace-nowrap">
-                    E-Books Download — $49 <ArrowRight className="group-hover:translate-x-1 transition-transform" size={18} />
+                  <button onClick={navigateToCheckout} className="cta-primary w-full py-5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-[1.03] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group whitespace-nowrap cursor-pointer">
+                    Download Books Now — {geoInfo.priceFormatted} <ArrowRight className="group-hover:translate-x-1 transition-transform" size={18} />
                   </button>
-                  <p className="text-xs text-gray-500 mt-1.5 text-center flex items-center justify-center gap-1 font-medium"><Download size={12} className="text-orange-400" /> Download Instantly</p>
+                  <p className="text-xs text-gray-500 mt-1.5 text-center flex items-center justify-center gap-1 font-medium"><Download size={12} className="text-orange-400" /> Download Instantly via Selar Checkout</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-px bg-gray-200" />
@@ -672,7 +710,7 @@ const App: React.FC = () => {
                 </div>
                 <div>
                   <button onClick={navigateToHardcopy} className="w-full py-5 bg-gray-900 text-white rounded-2xl font-bold text-lg shadow-xl shadow-gray-900/15 hover:bg-gray-800 hover:scale-[1.03] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group whitespace-nowrap">
-                    Get Hardcopies — $199 <Package size={18} />
+                    Get Hardcopies — {geoInfo.hardcopyPriceFormatted} <Package size={18} />
                   </button>
                   <p className="text-xs text-gray-500 mt-1.5 text-center flex items-center justify-center gap-1 font-medium"><Truck size={12} className="text-gray-400" /> 10-Day Delivery Globally</p>
                 </div>
@@ -723,15 +761,15 @@ const App: React.FC = () => {
               <p className="text-gray-400 text-lg mb-8">Thousands of people already have these books. The only question is — <span className="font-bold text-white">will you keep guessing, or start designing with confidence?</span></p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <div className="text-center">
-                  <button onClick={navigateToCheckout} className="cta-primary px-10 py-5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-[1.03] active:scale-[0.98] transition-all inline-flex items-center gap-3 group whitespace-nowrap">
-                    E-Books Download — $49 <ArrowRight className="group-hover:translate-x-1 transition-transform" size={18} />
+                  <button onClick={navigateToCheckout} className="cta-primary px-10 py-5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-[1.03] active:scale-[0.98] transition-all inline-flex items-center gap-3 group whitespace-nowrap cursor-pointer">
+                    E-Books Download — {geoInfo.priceFormatted} <ArrowRight className="group-hover:translate-x-1 transition-transform" size={18} />
                   </button>
                   <p className="text-xs text-gray-400 mt-2 flex items-center justify-center gap-1 font-medium"><Download size={12} className="text-orange-400" /> Download Instantly</p>
                 </div>
                 <span className="text-xs font-bold text-gray-600 uppercase">or</span>
                 <div className="text-center">
-                  <button onClick={navigateToHardcopy} className="px-10 py-5 bg-white text-gray-900 rounded-2xl font-bold text-lg shadow-xl hover:bg-gray-100 hover:scale-[1.03] active:scale-[0.98] transition-all inline-flex items-center gap-3 group whitespace-nowrap border border-gray-200">
-                    Get Hardcopies — $199 <Package size={18} />
+                  <button onClick={navigateToHardcopy} className="px-10 py-5 bg-white text-gray-900 rounded-2xl font-bold text-lg shadow-xl hover:bg-gray-100 hover:scale-[1.03] active:scale-[0.98] transition-all inline-flex items-center gap-3 group whitespace-nowrap border border-gray-200 cursor-pointer">
+                    Get Hardcopies — {geoInfo.hardcopyPriceFormatted} <Package size={18} />
                   </button>
                   <p className="text-xs text-gray-400 mt-2 flex items-center justify-center gap-1 font-medium"><Truck size={12} /> 10-Day Delivery Globally</p>
                 </div>
@@ -757,7 +795,7 @@ const App: React.FC = () => {
               <div className="flex items-center gap-6 text-xs text-gray-500">
                 <span>30-Day Money-Back Guarantee</span>
                 <span>·</span>
-                <span>Secure Payment via Gumroad</span>
+                <span>Secure Instant Checkout</span>
               </div>
               <p className="text-xs text-gray-600"> {new Date().getFullYear()} Home Design Books. All rights reserved.</p>
             </div>
@@ -775,8 +813,8 @@ const App: React.FC = () => {
           <div className="max-w-6xl mx-auto">
             {/* Mobile: timer + full-width button */}
             <div className="sm:hidden">
-              <button onClick={navigateToCheckout} className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl font-bold text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 group shadow-lg shadow-orange-500/20">
-                Get All 6 Books <ArrowRight className="group-hover:translate-x-1 transition-transform" size={14} />
+              <button onClick={navigateToCheckout} className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl font-bold text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 group shadow-lg shadow-orange-500/20 cursor-pointer">
+                Get All 6 Books — {geoInfo.priceFormatted} <ArrowRight className="group-hover:translate-x-1 transition-transform" size={14} />
               </button>
             </div>
 
@@ -795,8 +833,8 @@ const App: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-4">
-                <button onClick={navigateToCheckout} className="px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl font-bold text-sm hover:scale-[1.03] active:scale-[0.98] transition-all flex items-center gap-2 group whitespace-nowrap shadow-lg shadow-orange-500/20">
-                  Get All 6 Books <ArrowRight className="group-hover:translate-x-1 transition-transform" size={14} />
+                <button onClick={navigateToCheckout} className="px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl font-bold text-sm hover:scale-[1.03] active:scale-[0.98] transition-all flex items-center gap-2 group whitespace-nowrap shadow-lg shadow-orange-500/20 cursor-pointer">
+                  Get All 6 Books — {geoInfo.priceFormatted} <ArrowRight className="group-hover:translate-x-1 transition-transform" size={14} />
                 </button>
               </div>
             </div>
